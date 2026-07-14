@@ -7,7 +7,7 @@ export function splitSavings(
 ): { accountId: string; amount: number }[] {
   const out = splits.map((s) => ({
     accountId: s.accountId,
-    amount: Math.floor((s.percent / 100) * total),
+    amount: Math.floor((s.percent * total) / 100),
   }));
   const remainder = total - out.reduce((sum, x) => sum + x.amount, 0);
   if (out.length) out[out.length - 1].amount += remainder;

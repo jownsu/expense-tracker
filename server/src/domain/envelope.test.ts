@@ -9,6 +9,9 @@ describe('envelopeBudget', () => {
   it('adds carried-in leftovers (Misc has percent 0)', () => {
     expect(envelopeBudget(0, 35000, 4677)).toBe(4677);
   });
+  it('does not lose a peso to divide-before-multiply float error', () => {
+    expect(envelopeBudget(70, 5755)).toBe(4029);
+  });
 });
 
 describe('envelopeLeft', () => {

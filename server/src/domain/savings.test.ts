@@ -27,4 +27,13 @@ describe('splitSavings', () => {
     ]);
     expect(r.reduce((s, x) => s + x.amount, 0)).toBe(100);
   });
+  it('does not lose a peso to divide-before-multiply float error (58/42 of 1750)', () => {
+    expect(splitSavings(1750, [
+      { accountId: 'a', percent: 58 },
+      { accountId: 'b', percent: 42 },
+    ])).toEqual([
+      { accountId: 'a', amount: 1015 },
+      { accountId: 'b', amount: 735 },
+    ]);
+  });
 });
