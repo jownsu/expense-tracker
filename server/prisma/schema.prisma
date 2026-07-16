@@ -1,0 +1,197 @@
+// Prisma schema — expense tracker. Money is stored as integer whole pesos (never floats).
+// Datasource URL is provided by prisma.config.ts (from DATABASE_URL); it's not repeated here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth.js models (@auth/prisma-adapter owns these table shapes)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts Account[]
+  sessions Session[]
+
+  // App data owned by this user
+  envelopes            Envelope[]
+  savingsAccounts      SavingsAccount[]
+  months               Month[]
+  transactions         Transaction[]
+  savingsContributions SavingsContribution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────────────
+// App models
+// ─────────────────────────────────────────────────────────────
+
+enum EnvelopeKind {
+  spending
+  savings
+}
+
+enum MonthStatus {
+  open
+  closed
+}
+
+enum ContributionSource {
+  planned
+  leftover
+}
+
+// A budget category. Budget each month = percent × income + carriedIn.
+// Needs/Wants/Savings have a percent; Misc has percent 0 and is funded by carry-over.
+model Envelope {
+  id      String       @id @default(cuid())
+  userId  String
+  name    String
+  kind    EnvelopeKind @default(spending)
+  percent Int          @default(0)
+  sort    Int          @default(0)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthEnvelopes MonthEnvelope[]
+  transactions   Transaction[]
+
+  @@index([userId])
+}
+
+// A savings destination (e.g. MP2, Digital Bank). balance = openingBalance + Σ contributions.
+model SavingsAccount {
+  id             String @id @default(cuid())
+  userId         String
+  name           String
+  splitPercent   Int    @default(0)
+  openingBalance Int    @default(0)
+  sort           Int    @default(0)
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions SavingsContribution[]
+
+  @@index([userId])
+}
+
+// One budget period (calendar month) with its income and status.
+model Month {
+  id     String      @id @default(cuid())
+  userId String
+  period DateTime // first day of the month
+  income Int         @default(0)
+  status MonthStatus @default(open)
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  envelopes            MonthEnvelope[]
+  transactions         Transaction[]
+  savingsContributions SavingsContribution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, period])
+}
+
+// Per-envelope snapshot for a month. budget = allocated + carriedIn.
+// Snapshotting keeps history correct even if percentages change later.
+model MonthEnvelope {
+  id         String @id @default(cuid())
+  monthId    String
+  envelopeId String
+  allocated  Int    @default(0) // percent × income at open time
+  carriedIn  Int    @default(0) // leftovers moved in at month-close
+
+  month    Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+
+  @@unique([monthId, envelopeId])
+}
+
+// A spending line item. Reduces its envelope's "left".
+model Transaction {
+  id         String   @id @default(cuid())
+  userId     String
+  monthId    String
+  envelopeId String
+  amount     Int // whole pesos
+  note       String? // free text, e.g. "(3/9)"
+  occurredOn DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month    Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([monthId])
+  @@index([userId])
+}
+
+// Money entering a savings account: the planned monthly split, or a leftover moved at close.
+model SavingsContribution {
+  id         String             @id @default(cuid())
+  userId     String
+  monthId    String
+  accountId  String
+  amount     Int // whole pesos
+  source     ContributionSource @default(planned)
+  occurredOn DateTime           @default(now())
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month   Month          @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  account SavingsAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([monthId])
+  @@index([userId])
+}
