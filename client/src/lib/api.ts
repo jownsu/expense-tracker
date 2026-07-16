@@ -7,3 +7,11 @@ export async function getPing(): Promise<Ping> {
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json() as Promise<Ping>;
 }
+
+export type Health = { ok: boolean };
+
+export async function getHealth(): Promise<Health> {
+  const res = await fetch(`${API_URL}/health`, { credentials: "include" });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json() as Promise<Health>;
+}
