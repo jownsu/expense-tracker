@@ -51,8 +51,8 @@ Secondary goal: learn backend development — so the backend is hand-built, not 
 `vite-plugin-pwa`). Deploy static on Vercel/Netlify.
 
 **Backend** — Express + Postgres + **Prisma** (ORM + migrations):
-- **Auth** — Auth.js (`@auth/express`) with the Google provider + `@auth/prisma-adapter`.
-  Sessions persisted in Postgres; all app data is owned by the Auth.js `User`.
+- **Auth** — Better Auth with the Google provider + Prisma adapter, mounted on Express at
+  `/api/auth/*`. Sessions persisted in Postgres; all app data is owned by the Better Auth `User`.
 - **Authorization** — every query scoped to the authenticated user's id in the API layer.
 - **Validation** — Zod on request bodies.
 - **AI secrets** (v2) live on the Express server, never the client.
@@ -69,7 +69,7 @@ Money math lives in **pure functions with unit tests** (the only genuinely risky
 
 ## Data Model
 
-Auth.js's adapter adds its own tables (`User`, `Account`, `Session`, `VerificationToken`).
+Better Auth's adapter adds its own tables (`User`, `Session`, `Account`, `Verification`).
 On top of those sit the six app models below, every row owned by a `userId` that FKs to
 `User.id`. Every API query is scoped to the authenticated user in the Express layer (no
 row-level security — authorization is enforced in application code).

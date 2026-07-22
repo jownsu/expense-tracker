@@ -15,3 +15,4 @@ export async function getHealth(): Promise<Health> {
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json() as Promise<Health>;
 }
+

@@ -5,8 +5,14 @@ import { seedDefaultEnvelopes } from "./seedUser.js";
 let userId: string;
 
 beforeAll(async () => {
+  // Better Auth generates User.id itself, so the model has no DB default —
+  // a direct create in a test must supply one.
   const user = await prisma.user.create({
-    data: { email: `seed-test-${Date.now()}@example.test` },
+    data: {
+      id: crypto.randomUUID(),
+      name: "Seed Test",
+      email: `seed-test-${Date.now()}@example.test`,
+    },
   });
   userId = user.id;
 });

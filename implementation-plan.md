@@ -4,9 +4,9 @@
 
 **Goal:** Build the v1 expense tracker that replaces the spreadsheet — percentage budget envelopes, savings accounts with running balances, and a savings prediction — as an installable PWA backed by a hand-built Express/Prisma API.
 
-**Architecture:** Two apps in one repo. `client/` is a React+Vite PWA (SPA). `server/` is an Express + Prisma + Postgres API. Auth.js handles Google login; every API query is scoped to the authenticated `User`. Money math lives in pure, unit-tested functions.
+**Architecture:** Two apps in one repo. `client/` is a React+Vite PWA (SPA). `server/` is an Express + Prisma + Postgres API. Better Auth handles Google login; every API query is scoped to the authenticated `User`. Money math lives in pure, unit-tested functions.
 
-**Tech Stack:** React · Vite · Tailwind · shadcn/ui · TanStack React Query · Express · Prisma · Postgres (Neon) · Auth.js (`@auth/express`) · Zod · Vitest · TypeScript.
+**Tech Stack:** React · Vite · Tailwind · shadcn/ui · TanStack React Query · Express · Prisma · Postgres (Neon) · Better Auth · Zod · Vitest · TypeScript.
 
 ## Global Constraints
 
@@ -54,9 +54,9 @@
 - **Commit:** `chore(server): prisma init + neon connection`
 - **Coach:** what a connection string holds, what Prisma is, `schema.prisma` structure, migrations vs `db push`.
 
-### Task 1.2 — Schema: Auth.js + app models
+### Task 1.2 — Schema: auth + app models
 - **Files:** Modify `server/prisma/schema.prisma`.
-- **Deliverable:** Auth.js models (`User`, `Account`, `Session`, `VerificationToken`) + app models: `Envelope`, `SavingsAccount`, `Month`, `MonthEnvelope`, `Transaction`, `SavingsContribution`. All app models have `userId` → `User`. `amount`/`income`/`allocated`/etc. are `Int`. First migration run.
+- **Deliverable:** Better Auth models (`User`, `Session`, `Account`, `Verification`) + app models: `Envelope`, `SavingsAccount`, `Month`, `MonthEnvelope`, `Transaction`, `SavingsContribution`. All app models have `userId` → `User`. `amount`/`income`/`allocated`/etc. are `Int`. First migration run.
 - **Verify:** `npx prisma migrate dev --name init` succeeds; `npx prisma studio` shows all tables.
 - **Commit:** `feat(server): prisma schema for auth + app models`
 - **Coach:** modeling relations & foreign keys, one-to-many, enums (`Month.status`, `SavingsContribution.source`), why snapshot `MonthEnvelope` instead of recomputing, integer money.
@@ -70,32 +70,36 @@
 
 ---
 
-## Phase 2 — Auth (Auth.js)
+## Phase 2 — Auth (Better Auth)
+
+> Started on Auth.js, then swapped to **Better Auth** early in this phase (cleaner Express +
+> Prisma DX, first-class TS). Routes live under `/api/auth/*`; the handler mounts with
+> `toNodeHandler(auth)` **before** `express.json()`.
 
 ### Task 2.1 — Google OAuth credentials
-- **Files:** `server/.env` (`AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`), `.env.example` updated.
-- **Deliverable:** Google Cloud OAuth client created (web app), redirect URIs for local + prod noted in README.
-- **Verify:** Values present in `.env`; documented in README.
+- **Files:** `server/.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`), `.env.example` updated.
+- **Deliverable:** Google Cloud OAuth client created (web app); redirect URI `<API_URL>/api/auth/callback/google` registered for local + prod.
+- **Verify:** Values present in `.env`; redirect URI added in Google Cloud Console.
 - **Commit:** `docs: google oauth setup notes` (no secrets committed)
 - **Coach:** what an OAuth client is, client id vs secret, redirect URIs, why secrets never hit git.
 
-### Task 2.2 — Auth.js wiring
-- **Files:** `server/src/auth.ts`, modify `server/src/index.ts`.
-- **Deliverable:** `@auth/express` mounted with Google provider + `@auth/prisma-adapter`; session strategy configured; auth routes live under `/auth/*`.
-- **Verify:** Visit `/auth/signin` → Google consent → row appears in `User`/`Account`/`Session` (check Prisma Studio).
-- **Commit:** `feat(server): auth.js google login with prisma adapter`
-- **Coach:** the OAuth redirect dance end-to-end, what the adapter writes to each table, sessions vs JWT.
+### Task 2.2 — Better Auth wiring
+- **Files:** `server/src/auth.ts`, `server/src/app.ts`, `client/src/lib/auth.ts`.
+- **Deliverable:** `betterAuth()` with Google provider + `prismaAdapter`; `toNodeHandler(auth)` mounted at `/api/auth/*` before `express.json()`; client `createAuthClient` with `useSession` / `signIn.social` / `signOut`.
+- **Verify:** `GET /api/auth/ok` → `{ ok: true }`; Google consent → row appears in `User`/`Account`/`Session`.
+- **Commit:** `feat(server): better auth google login with prisma adapter`
+- **Coach:** the OAuth redirect dance end-to-end, what the adapter writes to each table, database sessions.
 
 ### Task 2.3 — CORS + cross-origin cookies
-- **Files:** Modify `server/src/index.ts`.
-- **Deliverable:** `cors` configured for the client origin with `credentials: true`; session cookie `sameSite=none` + `secure` in prod; client origin in env.
-- **Verify:** From the client dev origin, `fetch('/auth/session', {credentials:'include'})` returns the session (not blocked by CORS).
+- **Files:** `server/src/app.ts` (CORS), `server/src/auth.ts` (`trustedOrigins`).
+- **Deliverable:** `cors` configured for the client origin with `credentials: true`; `trustedOrigins` includes the client; session cookie `sameSite=none` + `secure` in prod; client origin in env.
+- **Verify:** From the client dev origin, `authClient.useSession()` returns the session (not blocked by CORS).
 - **Commit:** `feat(server): cors + cross-origin session cookies`
 - **Coach:** the same-origin policy, why cross-site cookies need `SameSite=None; Secure`, credentialed CORS — the #1 place this stack breaks.
 
 ### Task 2.4 — `requireUser` middleware + seed on first login
-- **Files:** `server/src/middleware/requireUser.ts`, modify auth callback.
-- **Deliverable:** Middleware rejects unauthenticated requests (401) and attaches `req.userId`. On first successful login, `seedDefaultEnvelopes(userId)` runs.
+- **Files:** `server/src/middleware/requireUser.ts`, `server/src/auth.ts` (`databaseHooks.user.create.after`).
+- **Deliverable:** Middleware reads the session via `auth.api.getSession({ headers: fromNodeHeaders(req.headers) })`, rejects unauthenticated requests (401) and attaches `req.userId`. A Better Auth `databaseHooks.user.create.after` hook runs `seedDefaultEnvelopes(user.id)` when a user is first created.
 - **Verify:** `GET /api/me` returns 401 when logged out, `{ userId }` when logged in; a brand-new user has 4 envelopes.
 - **Commit:** `feat(server): requireUser middleware + first-login seeding`
 - **Coach:** middleware as a gate, reading the session server-side, where to hook "first login".
@@ -351,8 +355,8 @@ All routes under `/api`, behind `requireUser`, scoped to `req.userId`. Request b
 FE is terse from here — build, minimal narration.
 
 ### Task 8.1 — API client + auth flow
-- **Files:** `client/src/lib/api.ts`, `client/src/lib/queries.ts`, `client/src/auth/*`, route guard.
-- **Deliverable:** fetch wrapper with `credentials:'include'`; React Query hooks; "Sign in with Google" → `/auth/signin`; `useSession`; protected routes redirect to login.
+- **Files:** `client/src/lib/api.ts`, `client/src/lib/queries.ts`, `client/src/lib/auth.ts`, route guard.
+- **Deliverable:** fetch wrapper with `credentials:'include'`; React Query hooks; "Sign in with Google" via `authClient.signIn.social({ provider: 'google' })`; `authClient.useSession()`; protected routes redirect to login.
 - **Verify:** Login round-trips; protected route blocks when logged out; session persists on refresh.
 - **Commit:** `feat(client): api client + google auth flow`
 

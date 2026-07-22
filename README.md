@@ -18,11 +18,11 @@ server/   Express + Prisma + Postgres API
 
 Each app has its own `package.json`. From each folder: `npm install`, then `npm run dev`.
 
-- `server/` needs a Postgres `DATABASE_URL` (Neon) and Google OAuth + Auth.js env vars —
+- `server/` needs a Postgres `DATABASE_URL` (Neon) and Google OAuth + Better Auth env vars —
   see `server/.env.example`.
 - `client/` needs the API base URL — see `client/.env.example`.
 
 ## Tech
 
 React · Vite · Tailwind · shadcn/ui · TanStack React Query · Express · Prisma · Postgres
-(Neon) · Auth.js · Zod · Vitest · TypeScript.
+(Neon) · Better Auth · Zod · Vitest · TypeScript.
