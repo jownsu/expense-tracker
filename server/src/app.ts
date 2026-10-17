@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./auth.js";
+import { requireAuth } from "./requireAuth.js";
 
 export const app = express();
 
@@ -22,4 +23,9 @@ app.get("/health", (_req, res) => {
 
 app.get("/api/ping", (_req, res) => {
   res.json({ message: "pong", service: "expense-tracker-api" });
+});
+
+// Example protected route — only reachable with a valid session cookie.
+app.get("/api/test", requireAuth, (_req, res) => {
+  res.json({ message: "you are logged in", user: res.locals.user });
 });
