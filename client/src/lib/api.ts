@@ -16,3 +16,12 @@ export async function getHealth(): Promise<Health> {
   return res.json() as Promise<Health>;
 }
 
+
+export type Me = { message: string; user: { id: string; name: string; email: string } };
+
+// Protected: 401 unless the session cookie is valid.
+export async function getTest(): Promise<Me> {
+  const res = await fetch(`${API_URL}/api/test`, { credentials: "include" });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json() as Promise<Me>;
+}
