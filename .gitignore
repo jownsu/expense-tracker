@@ -7,3 +7,8 @@ build/
 *.log
 .DS_Store
 .superpowers/
+
+# Local AI tooling (Claude Code agents/skills)
+.agents/
+.claude/
+skills-lock.json
