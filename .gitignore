@@ -8,7 +8,8 @@ build/
 .DS_Store
 .superpowers/
 
-# Local AI tooling (Claude Code agents/skills)
+# Local AI tooling; .claude/agents/ is shared so agents come with the repo
 .agents/
-.claude/
+.claude/*
+!.claude/agents/
 skills-lock.json
