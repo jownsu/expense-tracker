@@ -40,4 +40,24 @@ describe("GET /api/test (protected)", () => {
     expect(res.status).toBe(200);
     expect(res.body.user).toEqual(user);
   });
+
+  it("responds 500 with a generic body (no stack) when the session check throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(auth.api, "getSession").mockRejectedValue(new Error("db down at /secret/path"));
+
+    const res = await request(app).get("/api/test");
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "Internal error" });
+    expect(res.text).not.toContain("/secret/path");
+  });
+});
+
+describe("security headers", () => {
+  it("sets helmet headers and hides X-Powered-By", async () => {
+    const res = await request(app).get("/health");
+
+    expect(res.headers["x-powered-by"]).toBeUndefined();
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+  });
 });
