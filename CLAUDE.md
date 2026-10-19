@@ -10,7 +10,7 @@ Two apps: `client/` (React + Vite SPA) and `server/` (Express + Prisma + Postgre
 
 ## Databases
 
-- `DATABASE_URL` is the dev DB. `TEST_DATABASE_URL` (in `server/.env`) is `expense_tracker_test`, which the Playwright run wipes with `prisma migrate reset`. Point every destructive command at the test DB.
+- `DATABASE_URL` is the dev DB. `TEST_DATABASE_URL` (in `server/.env`) is `expense_tracker_test`: Vitest runs against it (`server/vitest.config.ts`) and the Playwright run wipes it with `prisma migrate reset`. Point every destructive command at the test DB.
 - Tests inject env vars instead of editing `.env`: `dotenv/config` keeps a value that is already set, so `DATABASE_URL=… <cmd>` wins.
 - Playwright (`client/playwright.config.ts`) starts its own API on :4001 and Vite on :5174 so it never touches the dev servers on :4000/:5173.
 
