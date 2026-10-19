@@ -10,7 +10,13 @@ Two apps: `client/` (React + Vite SPA) and `server/` (Express + Prisma + Postgre
 
 ## Databases
 
-- `DATABASE_URL` is the dev DB. `TEST_DATABASE_URL` (in `server/.env`) is `expense_tracker_test`, used by Vitest and Playwright, and wiped by every e2e run. Point every destructive command at the test DB. E2E test details live in the `e2e-test-writer` agent.
+- `DATABASE_URL` is the dev DB. `TEST_DATABASE_URL` (in `server/.env`) is `expense_tracker_test`, used by Vitest and Playwright, and wiped by every e2e run. Point every destructive command at the test DB.
+
+## Testing
+
+- **E2E tests go through the `e2e-test-writer` agent.** Dispatch it whenever a user-facing flow is added or changed, an existing flow needs its behavior locked in, or an e2e test fails. Give it the feature and the flows to cover; it knows the Playwright harness, writes under `client/e2e/`, and runs the suite until green.
+- Relay the agent's "suspicious behavior" list to the user as-is. They decide which items are bugs; fixing one is its own task.
+- Money and domain logic get Vitest unit tests beside the code (see Invariants). E2E covers the main user flows only.
 
 ## Git
 
